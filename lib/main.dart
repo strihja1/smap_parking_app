@@ -49,59 +49,70 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
       body: StreamBuilder(
-        stream: databaseReference.onValue,
-        builder: (context, snapshot) {
-          readData();
-          if(snapshot.hasData && !snapshot.hasError && snapshot.data.snapshot.value != null) {
-            print(snapshot.data);
-            return Container(
-              color: isFree == null ? Colors.yellow : isFree
-                  ? Colors.green
-                  : Colors.red,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: <Widget>[
-                    Text(
-                      'Stav parkovacího místa',
-                      style: TextStyle(fontSize: 20),
-                    ), Text(
-                      isFree == null ? "Neznámý" : isFree
-                          ? "Volno"
-                          : "Obsazeno",
-                      style: TextStyle(fontSize: 40),
-
-                    ), Text(
-                      dateSince == null ? "" : 'Od: ${dateTimeFormatToString(
-                          dateSince)}',
-                      style: TextStyle(fontSize: 40,),
-                      textAlign: TextAlign.center,
-                    ), Text(
-                        'Poslední aktualizace: $lastUpdate',
+        stream: databaseReference.child("parking").child("isFree").onValue,
+        builder: (context, snapshot){
+          return StreamBuilder(
+          stream: databaseReference.child("parking").child("date").onValue,
+          builder: (context, snapshot) {
+            if(snapshot.hasData && !snapshot.hasError && snapshot.data.snapshot.value != null) {
+              DateTime date = DateTime.parse(snapshot.data.snapshot.value);
+              databaseReference.child("parking").child("isFree").once().then((DataSnapshot dataSnapshot) {
+                final bool isFreeAsBool = dataSnapshot.value == "true";
+                  dateSince = date;
+                  isFree = isFreeAsBool;
+                  lastUpdate = dateTimeFormatToString(DateTime.now());
+              });
+              return Container(
+                color: isFree == null ? Colors.yellow : isFree
+                    ? Colors.green
+                    : Colors.red,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: <Widget>[
+                      Text(
+                        'Stav parkovacího místa',
                         style: TextStyle(fontSize: 20),
-                        textAlign: TextAlign.center
-                    ),
-                    RaisedButton(color: Colors.black,
-                        padding: EdgeInsets.symmetric(
-                            vertical: 16, horizontal: 30),
+                      ), Text(
+                        isFree == null ? "Neznámý" : isFree
+                            ? "Volno"
+                            : "Obsazeno",
+                        style: TextStyle(fontSize: 40),
 
-                        child: Text("Aktualizovat",
-                            style: TextStyle(fontSize: 18, color: Colors
-                                .white)),
-                        onPressed: () {
-                          readData();
-                        })
-                  ],
+                      ), Text(
+                        dateSince == null ? "" : 'Od: ${dateTimeFormatToString(
+                            date)}',
+                        style: TextStyle(fontSize: 40,),
+                        textAlign: TextAlign.center,
+                      ), Text(
+                          'Poslední aktualizace: $lastUpdate',
+                          style: TextStyle(fontSize: 20),
+                          textAlign: TextAlign.center
+                      ),
+                      RaisedButton(color: Colors.black,
+                          padding: EdgeInsets.symmetric(
+                              vertical: 16, horizontal: 30),
+
+                          child: Text("Aktualizovat",
+                              style: TextStyle(fontSize: 18, color: Colors
+                                  .white)),
+                          onPressed: () {
+                            readData();
+                          })
+                    ],
+                  ),
                 ),
-              ),
-            );
+              );
+            }
+            else{
+              return Center(child: CircularProgressIndicator());
+            }
           }
-          else{
-            return Center(child: CircularProgressIndicator());
-          }
-        }
+        );
+          },
       ),
     );
   }
@@ -112,12 +123,13 @@ class _MyHomePageState extends State<MyHomePage> {
       "isFree": "true"
     });
   }
+
   String dateTimeFormatToString(DateTime dateTime) =>
       DateFormat("HH:mm:ss dd-MM-yyyy ").format(dateTime);
 
   void readData(){
     databaseReference.child("parking").child("date").once().then((DataSnapshot snapshot) {
-      DateTime date = DateFormat("yyyy-dd-MMTHH:mm:ss").parse(snapshot.value);
+      DateTime date = DateTime.parse(snapshot.value);
       databaseReference.child("parking").child("isFree").once().then((DataSnapshot snapshot) {
         final bool isFreeAsBool = snapshot.value == "true";
         setState(() {
@@ -127,20 +139,6 @@ class _MyHomePageState extends State<MyHomePage> {
         });
       });
     });
-  }
-
-  void test(){
-      databaseReference.child("parking").child("date").once().then((DataSnapshot snapshot) {
-        DateTime date = DateFormat("yyyy-dd-MMTHH:mm:ss").parse(snapshot.value);
-        databaseReference.child("parking").child("isFree").once().then((DataSnapshot snapshot) {
-          final bool isFreeAsBool = snapshot.value == "true";
-          setState(() {
-            dateSince = date;
-            isFree = isFreeAsBool;
-            lastUpdate = dateTimeFormatToString(DateTime.now());
-          });
-        });
-      });
   }
 }
 
